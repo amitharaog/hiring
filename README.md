@@ -20,3 +20,6 @@ Each criterion is scored 0-10 by Gemini from evidence in the CV. The weighted 0-
 
 ## Rubric
 `rubric.txt` was derived from Kargo's 8 hire CVs and their ratings, not the JDs. Three patterns separated the five "Exceeds" hires from the three "Meets/Below": hands-on operator time in freight/logistics, an unprompted fix that others adopted, and sole ownership with no one above. A fourth, failure on the record, separates the two hires who documented failures from three CVs that list only wins. The hire files contained CVs only (no interview notes or outcome one-liners), so the patterns come from the CVs plus the ratings table.
+
+## Deploying to Vercel
+Import this repo, set `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY` and `DASHBOARD_PASSWORD` under Environment Variables, and deploy. The framework is detected as Next.js; no build settings need changing. After the first deploy, open `/hiring/upload` and sign in with `DASHBOARD_PASSWORD` (any username).
