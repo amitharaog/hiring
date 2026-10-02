@@ -10,7 +10,7 @@ type Schema = Record<string, unknown>;
 export async function geminiJson<T>(opts: { system: string; prompt: string; schema: Schema }): Promise<T> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY must be set");
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: opts.system }] },
