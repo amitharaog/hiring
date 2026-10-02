@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { call, reconcileAll } from "./api";
 
 type Role = "PM" | "SPM";
@@ -16,6 +16,9 @@ export function Upload() {
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState("");
+  const failedCount = useRef(0);
+  const doneCount = useRef(0);
+  const anyDone = async () => doneCount.current > 0;
 
   const patch = (i: number, p: Partial<Item>) => setItems((cur) => cur.map((it, j) => (j === i ? { ...it, ...p } : it)));
 
@@ -26,6 +29,8 @@ export function Upload() {
 
   async function run() {
     setRunning(true);
+    failedCount.current = 0;
+    doneCount.current = 0;
     const queue = items.map((_, i) => i).filter((i) => items[i].state !== "done");
     let next = 0;
     // A few CVs at a time: each one is a read + a model call, so this keeps 60 CVs to a few minutes.
@@ -38,17 +43,24 @@ export function Upload() {
           form.set("file", items[i].file);
           form.set("role", items[i].role);
           await call("/api/hiring/candidates", { method: "POST", body: form });
+          doneCount.current++;
           patch(i, { state: "done" });
         } catch (e) {
+          failedCount.current++;
           patch(i, { state: "error", message: e instanceof Error ? e.message : "Failed" });
         }
       }
     };
     await Promise.all([worker(), worker(), worker()]);
+    if (!(await anyDone())) {
+      setPhase("Nothing was scored, so there is nothing to draft. Fix the errors above and retry.");
+      setRunning(false);
+      return;
+    }
     setPhase("Writing briefs and draft emails…");
     try {
       await reconcileAll((n) => setPhase(`Writing briefs and draft emails… ${n} left`));
-      setPhase("Done. Everything is ready on the dashboard.");
+      setPhase(failedCount.current ? `Done, but ${failedCount.current} file(s) failed. See the errors above.` : "Done. Everything is ready on the dashboard.");
     } catch (e) {
       setPhase(`Scored, but drafts stopped: ${e instanceof Error ? e.message : "error"}. Open the dashboard to retry.`);
     }
@@ -95,7 +107,7 @@ export function Upload() {
         <>
           <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white text-sm">
             {items.map((it, i) => (
-              <li key={i} className="flex items-center gap-3 px-4 py-2">
+              <li key={i} className="flex flex-wrap items-center gap-3 px-4 py-2">
                 <span className="min-w-0 flex-1 truncate">{it.file.name}</span>
                 <select
                   value={it.role}
@@ -106,14 +118,10 @@ export function Upload() {
                   <option value="PM">PM</option>
                   <option value="SPM">SPM</option>
                 </select>
-                <span
-                  className={`w-40 truncate text-right ${
-                    it.state === "error" ? "text-red-600" : it.state === "done" ? "text-emerald-600" : "text-slate-500"
-                  }`}
-                  title={it.message}
-                >
-                  {it.state === "error" ? it.message : it.state}
+                <span className={`text-right ${it.state === "error" ? "text-red-600" : it.state === "done" ? "text-emerald-600" : "text-slate-500"}`}>
+                  {it.state === "error" ? "failed" : it.state}
                 </span>
+                {it.state === "error" && <p className="w-full break-words text-xs text-red-600">{it.message}</p>}
               </li>
             ))}
           </ul>

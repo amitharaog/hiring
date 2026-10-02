@@ -19,8 +19,8 @@ export function handle<C>(fn: (req: Request, ctx: C) => Promise<Response>) {
     } catch (e) {
       if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
       console.error(e);
-      // Locally, show the real reason (e.g. missing env vars); in production keep it generic.
-      const detail = process.env.NODE_ENV !== "production" ? ` (${errorText(e)})` : "";
+      // Internal tool behind a password: always show the real reason so failures can be fixed fast.
+      const detail = ` (${errorText(e)})`;
       return Response.json({ error: `Something went wrong. Try again.${detail}` }, { status: 500 });
     }
   };
