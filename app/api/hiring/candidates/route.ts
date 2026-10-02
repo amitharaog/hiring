@@ -1,5 +1,6 @@
 import { db } from "@/lib/supabase";
 import { fail, handle } from "@/lib/http";
+import { audit } from "@/lib/hiring/audit";
 import { SHORTLIST_SIZE, ingestCv, listCandidates } from "@/lib/hiring/pipeline";
 
 // A single upload reads, anonymises and scores one CV, which is a few seconds of model time.
@@ -27,5 +28,6 @@ export const DELETE = handle(async () => {
     .delete({ count: "exact" })
     .neq("id", "00000000-0000-0000-0000-000000000000");
   if (error) throw error;
+  await audit(null, null, "cleared_all", `${count ?? 0} candidates removed`);
   return Response.json({ deleted: count ?? 0 });
 });

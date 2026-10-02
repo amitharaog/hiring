@@ -10,7 +10,7 @@ Built for MESA Case 2 (Arjun and the Hiring Backlog).
 - RLS is on for both tables with no policies, so the anon key reads nothing. The app uses the secret key from route handlers only. Set `DASHBOARD_PASSWORD` on any public deploy; `proxy.ts` then guards `/hiring` and `/api/hiring` with Basic auth.
 
 ## Setup
-1. Run `supabase/hiring.sql` in the Supabase SQL editor. The rubric (`lib/hiring/rubric-data.ts`, mirrored in `rubric.txt`) loads into `rubric_criteria` automatically on first use.
+1. Run `supabase/hiring.sql` in the Supabase SQL editor. (Already ran the first version? Run `supabase/hiring_v2.sql` instead; it adds the brief, draft and audit-log columns and is safe to re-run.) The rubric (`lib/hiring/rubric-data.ts`, mirrored in `rubric.txt`) loads into `rubric_criteria` automatically on first use.
 2. Copy `.env.example` to `.env.local` and fill in `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY`, `DASHBOARD_PASSWORD`. Leave `RESEND_API_KEY` blank until the Resend step.
 3. `npm run dev`, then open `/hiring/upload`. Add the same variables in Vercel and deploy.
 4. Resend: set `RESEND_API_KEY` (and redeploy). Until you verify a domain, Resend only delivers to your own account email from `onboarding@resend.dev`; set `RESEND_TEST_RECIPIENT` to route every email to one test inbox (the subject shows the intended recipient).
