@@ -18,6 +18,8 @@ export async function reconcileAll(onProgress?: (r: ReconcileResult, note?: stri
   let errors = new Set<string>();
   let waits = 0;
   let failures = 0;
+  let stuck = 0;
+  let prevRemaining = Infinity;
   for (let i = 0; i < 80; i++) {
     try {
       last = await call<ReconcileResult>("/api/hiring/reconcile", { method: "POST" });
@@ -29,6 +31,14 @@ export async function reconcileAll(onProgress?: (r: ReconcileResult, note?: stri
       continue;
     }
     onProgress?.(last);
+    // Safety net: if nothing is getting smaller, stop instead of calling the model forever.
+    stuck = last.remaining >= prevRemaining ? stuck + 1 : 0;
+    prevRemaining = last.remaining;
+    if (stuck >= 3) {
+      last.errors.forEach((e) => errors.add(e));
+      if (!errors.size) errors.add("Drafts are not being saved. Reload and press Refresh drafts, or tell the developer.");
+      break;
+    }
     if (last.remaining <= 0 && last.failed === 0) {
       errors = new Set();
       break;

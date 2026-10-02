@@ -193,7 +193,8 @@ export async function reconcile(limit = 4) {
         id: r.id,
         run: async () => {
           const brief = await generateBrief(r);
-          await db().from("candidates").update({ brief }).eq("id", r.id).is("sent_at", null);
+          const { error } = await db().from("candidates").update({ brief }).eq("id", r.id).is("sent_at", null);
+          if (error) throw new Error(`Could not save the brief: ${error.message}`);
         },
       });
     }
@@ -203,12 +204,13 @@ export async function reconcile(limit = 4) {
         id: r.id,
         run: async () => {
           const e = await generateEmail(r, want);
-          await db()
+          const { error } = await db()
             .from("candidates")
             .update({ email_type: want, email_subject: e.subject, email_body: e.body })
             .eq("id", r.id)
             .is("sent_at", null)
             .eq("email_override", r.email_override);
+          if (error) throw new Error(`Could not save the email draft: ${error.message}`);
         },
       });
     }
