@@ -18,16 +18,27 @@ export async function geminiJson<T>(opts: { system: string; prompt: string; sche
     generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: opts.schema },
   });
 
+  const started = Date.now();
   let lastError = "";
+  let wait = 0;
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt) await new Promise((r) => setTimeout(r, 1500 * 2 ** (attempt - 1)));
+    if (attempt) {
+      // Stay inside the 60s function limit: give up rather than start a wait we can't finish.
+      if (Date.now() - started + wait > 48_000) break;
+      await new Promise((r) => setTimeout(r, wait));
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body,
     });
     if (res.status === 429 || res.status >= 500) {
-      lastError = `Gemini ${res.status}`;
+      const err = await res.json().catch(() => null);
+      lastError = `Gemini ${res.status}: ${String(err?.error?.message ?? "rate limited or unavailable").slice(0, 240)}`;
+      // Honour Google's own "retry in Ns" hint (header or error details), capped; otherwise back off.
+      const hinted = Number(res.headers.get("retry-after")) ||
+        parseFloat(String(JSON.stringify(err?.error?.details ?? "").match(/"retryDelay":"([\d.]+)s"/)?.[1] ?? "")) || 0;
+      wait = Math.min(15_000, Math.max(hinted * 1000, 2000 * 2 ** attempt));
       continue;
     }
     const data = await res.json().catch(() => null);
@@ -35,12 +46,14 @@ export async function geminiJson<T>(opts: { system: string; prompt: string; sche
     const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       lastError = `Gemini returned no text (${data?.candidates?.[0]?.finishReason ?? "unknown reason"})`;
+      wait = 1500;
       continue;
     }
     try {
       return JSON.parse(text) as T;
     } catch {
       lastError = "Gemini returned invalid JSON";
+      wait = 1500;
     }
   }
   throw new Error(lastError || "Gemini failed");

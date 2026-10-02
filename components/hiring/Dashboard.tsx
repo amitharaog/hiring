@@ -51,7 +51,7 @@ export function Dashboard() {
     busy.current = true;
     setDrafting("Writing briefs and draft emails…");
     try {
-      const r = await reconcileAll((p) => setDrafting(p.remaining > 0 ? `Writing briefs and draft emails… ${p.remaining} left` : "Finishing up…"));
+      const r = await reconcileAll((p, note) => setDrafting(note ?? (p.remaining > 0 ? `Writing briefs and draft emails… ${p.remaining} left` : "Finishing up…")));
       setDraftErrors(r.errors);
       await load();
     } catch (e) {

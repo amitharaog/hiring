@@ -217,8 +217,8 @@ export async function reconcile(limit = 8) {
   let done = 0;
   let failed = 0;
   const errors: string[] = [];
-  for (let i = 0; i < batch.length; i += 4) {
-    const results = await Promise.allSettled(batch.slice(i, i + 4).map((t) => t.run()));
+  for (let i = 0; i < batch.length; i += 2) {
+    const results = await Promise.allSettled(batch.slice(i, i + 2).map((t) => t.run()));
     for (const res of results) {
       if (res.status === "fulfilled") done++;
       else {

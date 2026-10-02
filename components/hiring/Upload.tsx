@@ -44,7 +44,7 @@ export function Upload() {
     const queue = items.filter((i) => i.state === "queued" || i.state === "error");
     let next = 0;
     let scored = 0;
-    // Three CVs at a time: each is a read plus a model call, which keeps 60 CVs to a few minutes.
+    // Two CVs at a time: each is a read plus a model call, which keeps 60 CVs to a few minutes.
     const worker = async () => {
       while (next < queue.length) {
         const it = queue[next++];
@@ -61,11 +61,11 @@ export function Upload() {
         }
       }
     };
-    await Promise.all([worker(), worker(), worker()]);
+    await Promise.all([worker(), worker()]);
 
     setPhase("Writing interview briefs and draft emails…");
     try {
-      const r = await reconcileAll((p) => setPhase(`Writing interview briefs and draft emails… ${p.remaining} left`));
+      const r = await reconcileAll((p, note) => setPhase(note ?? `Writing interview briefs and draft emails… ${p.remaining} left`));
       setDraftErrors(r.errors);
       setPhase(r.errors.length ? "Scored, but some drafts failed (see below). Open the dashboard and press Refresh drafts to retry." : scored ? "All done. Your ranked shortlist is ready." : "Nothing new to add.");
     } catch (e) {
