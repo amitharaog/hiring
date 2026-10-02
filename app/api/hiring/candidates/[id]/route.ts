@@ -12,7 +12,12 @@ async function load(ctx: RouteContext<"/api/hiring/candidates/[id]">) {
 // GET: the candidate plus their decision history.
 export const GET = handle(async (_req, ctx: RouteContext<"/api/hiring/candidates/[id]">) => {
   const row = await load(ctx);
-  return Response.json({ candidate: toView(row), history: await listAudit(row.id, 100) });
+  // The history is a nice-to-have: if the audit table isn't set up yet, still show the candidate.
+  const history = await listAudit(row.id, 100).catch((e) => {
+    console.error("audit history unavailable:", e);
+    return [];
+  });
+  return Response.json({ candidate: toView(row), history });
 });
 
 // PATCH {kind, subject?, body?}  save edits to one draft;  {email}  fix the recipient address.
