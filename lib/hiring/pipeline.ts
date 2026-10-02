@@ -216,17 +216,19 @@ export async function reconcile(limit = 8) {
   const batch = tasks.slice(0, limit);
   let done = 0;
   let failed = 0;
+  const errors: string[] = [];
   for (let i = 0; i < batch.length; i += 4) {
     const results = await Promise.allSettled(batch.slice(i, i + 4).map((t) => t.run()));
     for (const res of results) {
       if (res.status === "fulfilled") done++;
       else {
         failed++;
+        errors.push(res.reason instanceof Error ? res.reason.message : String(res.reason));
         console.error("reconcile task failed:", res.reason);
       }
     }
   }
-  return { done, failed, remaining: tasks.length - done - failed };
+  return { done, failed, remaining: tasks.length - done - failed, errors: [...new Set(errors)].slice(0, 3) };
 }
 
 // -------------------------------------------------------- candidate intake
@@ -254,6 +256,16 @@ export async function scoreAndSave(id: string) {
 export async function ingestCv(file: File, role: Role) {
   const text = await readCvText(file);
   const { personal, content } = splitPersonalDetails(text, file.name);
+  // Same file, same role, same text already uploaded: don't create (and pay to score) a second copy.
+  const dup = await db()
+    .from("candidates")
+    .select("id")
+    .eq("applied_role", role)
+    .eq("file_name", file.name)
+    .eq("cv_content", content)
+    .limit(1)
+    .maybeSingle();
+  if (dup.data) return { id: dup.data.id as string, duplicate: true };
   const { data, error } = await db()
     .from("candidates")
     .insert({ file_name: file.name, applied_role: role, personal_details: personal, cv_content: content })
@@ -261,7 +273,7 @@ export async function ingestCv(file: File, role: Role) {
     .single();
   if (error) throw error;
   await scoreAndSave(data.id);
-  return data.id as string;
+  return { id: data.id as string, duplicate: false };
 }
 
 // ------------------------------------------------------------- dashboard

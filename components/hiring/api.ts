@@ -5,11 +5,17 @@ export async function call<T = unknown>(url: string, init?: RequestInit): Promis
   return data as T;
 }
 
+export type ReconcileResult = { done: number; failed: number; remaining: number; errors: string[] };
+
 /** Generates briefs and draft emails in batches until none are left (or no progress is made). */
-export async function reconcileAll(onProgress?: (remaining: number) => void) {
+export async function reconcileAll(onProgress?: (r: ReconcileResult) => void) {
+  let last: ReconcileResult = { done: 0, failed: 0, remaining: 0, errors: [] };
+  const errors = new Set<string>();
   for (let i = 0; i < 40; i++) {
-    const r = await call<{ done: number; failed: number; remaining: number }>("/api/hiring/reconcile", { method: "POST" });
-    onProgress?.(r.remaining);
-    if (r.remaining <= 0 || r.done === 0) return r;
+    last = await call<ReconcileResult>("/api/hiring/reconcile", { method: "POST" });
+    last.errors.forEach((e) => errors.add(e));
+    onProgress?.(last);
+    if (last.remaining <= 0 || last.done === 0) break;
   }
+  return { ...last, errors: [...errors] };
 }

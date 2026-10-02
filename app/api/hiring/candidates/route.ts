@@ -16,6 +16,5 @@ export const POST = handle(async (req: Request) => {
   if (!(file instanceof File) || file.size === 0) fail(400, "Choose a CV file");
   if (role !== "PM" && role !== "SPM") fail(400, "Choose the role this person applied for");
   if (file.size > 8 * 1024 * 1024) fail(413, `${file.name} is over 8 MB`);
-  const id = await ingestCv(file, role);
-  return Response.json({ id });
+  return Response.json(await ingestCv(file, role));
 });
