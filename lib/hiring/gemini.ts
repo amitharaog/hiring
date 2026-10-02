@@ -31,7 +31,16 @@ export async function geminiJson<T>(opts: { system: string; prompt: string; sche
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body,
+      // A hung request must not eat the whole 60s function budget.
+      signal: AbortSignal.timeout(25_000),
+    }).catch((e: unknown) => {
+      lastError = e instanceof Error && e.name === "TimeoutError" ? "Gemini took too long to answer" : `Gemini request failed: ${e instanceof Error ? e.message : e}`;
+      return null;
     });
+    if (!res) {
+      wait = 1500;
+      continue;
+    }
     if (res.status === 429 || res.status >= 500) {
       const err = await res.json().catch(() => null);
       lastError = `Gemini ${res.status}: ${String(err?.error?.message ?? "rate limited or unavailable").slice(0, 240)}`;

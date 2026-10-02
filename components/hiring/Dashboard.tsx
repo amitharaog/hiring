@@ -227,7 +227,7 @@ export function Dashboard() {
                 <span className="h-px flex-1 bg-slate-300" />
               </div>
             )}
-            <Card c={c} rank={rank} above={above} role={role} defaultOpen={rank === 1 && !c.sent_at && filter === "all" && !query} onChange={load} />
+            <Card c={c} rank={rank} above={above} role={role} draftError={draftErrors[0]} drafting={!!drafting} defaultOpen={rank === 1 && !c.sent_at && filter === "all" && !query} onChange={load} />
           </li>
         ))}
       </ol>
@@ -265,11 +265,16 @@ function Card({
   role,
   defaultOpen,
   onChange,
+  draftError,
+  drafting,
 }: {
   c: CandidateView;
   rank: number;
   above: boolean;
   role: Role;
+  draftError?: string;
+  drafting: boolean;
+  
   defaultOpen: boolean;
   onChange: () => Promise<unknown>;
 }) {
@@ -367,8 +372,14 @@ function Card({
               {c.email_subject !== null ? (
                 <Draft key={`${c.email_type}|${c.email_subject}|${c.email_body}|${c.email}`} c={c} onChange={onChange} />
               ) : (
-                <p className="rounded-xl bg-slate-50 p-3 text-slate-500">
-                  {c.status === "scored" ? "The draft is being written. It will appear here in a moment." : "A draft appears here after scoring."}
+                <p className={`rounded-xl p-3 ${draftError && !drafting ? "bg-rose-50 text-rose-700" : "bg-slate-50 text-slate-500"}`}>
+                  {c.status !== "scored"
+                    ? "A draft appears here after scoring."
+                    : draftError && !drafting
+                      ? `Drafting failed: ${draftError}. Press Refresh drafts to try again.`
+                      : drafting
+                        ? "Writing the draft now…"
+                        : "No draft yet. Press Refresh drafts at the top of the page."}
                 </p>
               )}
             </section>

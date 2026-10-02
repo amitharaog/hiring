@@ -17,8 +17,17 @@ export async function reconcileAll(onProgress?: (r: ReconcileResult, note?: stri
   let last: ReconcileResult = { done: 0, failed: 0, remaining: 0, errors: [] };
   let errors = new Set<string>();
   let waits = 0;
+  let failures = 0;
   for (let i = 0; i < 80; i++) {
-    last = await call<ReconcileResult>("/api/hiring/reconcile", { method: "POST" });
+    try {
+      last = await call<ReconcileResult>("/api/hiring/reconcile", { method: "POST" });
+    } catch (e) {
+      // A cut-off or dropped request is not fatal: partial work was saved, so try again a few times.
+      if (++failures > 4) throw e;
+      onProgress?.(last, "Connection hiccup. Retrying…");
+      await sleep(3000);
+      continue;
+    }
     onProgress?.(last);
     if (last.remaining <= 0 && last.failed === 0) {
       errors = new Set();

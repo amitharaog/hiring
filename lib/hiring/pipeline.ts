@@ -176,7 +176,8 @@ function scoreOf(r: Row, role: Role) {
  * Safe to call repeatedly; does at most `limit` generations and reports what is left.
  * Nothing here sends anything. Sending always needs the founder's click.
  */
-export async function reconcile(limit = 8) {
+export async function reconcile(limit = 4) {
+  const t0 = Date.now();
   const { data, error } = await db().from("candidates").select("*").eq("status", "scored");
   if (error) throw error;
   const rows = (data ?? []) as Row[];
@@ -218,6 +219,8 @@ export async function reconcile(limit = 8) {
   let failed = 0;
   const errors: string[] = [];
   for (let i = 0; i < batch.length; i += 2) {
+    // Stay well inside the 60s function limit; whatever is left is picked up by the next call.
+    if (i > 0 && Date.now() - t0 > 28_000) break;
     const results = await Promise.allSettled(batch.slice(i, i + 2).map((t) => t.run()));
     for (const res of results) {
       if (res.status === "fulfilled") done++;
@@ -228,7 +231,7 @@ export async function reconcile(limit = 8) {
       }
     }
   }
-  return { done, failed, remaining: tasks.length - done - failed, errors: [...new Set(errors)].slice(0, 3) };
+  return { done, failed, remaining: Math.max(0, tasks.length - done - failed), errors: [...new Set(errors)].slice(0, 3) };
 }
 
 // -------------------------------------------------------- candidate intake
