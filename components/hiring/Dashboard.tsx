@@ -137,6 +137,25 @@ export function Dashboard() {
           >
             Refresh drafts
           </button>
+          {all.length > 0 && (
+            <button
+              onClick={async () => {
+                const sentNote = stats.sent ? `\n\n${stats.sent} of them already had an email sent; that record will be lost too.` : "";
+                if (!window.confirm(`Delete ALL ${all.length} candidates, with their scores, briefs and drafts?${sentNote}\n\nThis can't be undone. The rubric is kept.`)) return;
+                try {
+                  await call("/api/hiring/candidates", { method: "DELETE" });
+                  setDraftErrors([]);
+                  setError("");
+                  await load();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not clear");
+                }
+              }}
+              className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+            >
+              Clear all
+            </button>
+          )}
           <Link href="/hiring/upload" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
             + Upload CVs
           </Link>

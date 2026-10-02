@@ -1,3 +1,4 @@
+import { db } from "@/lib/supabase";
 import { fail, handle } from "@/lib/http";
 import { SHORTLIST_SIZE, ingestCv, listCandidates } from "@/lib/hiring/pipeline";
 
@@ -17,4 +18,14 @@ export const POST = handle(async (req: Request) => {
   if (role !== "PM" && role !== "SPM") fail(400, "Choose the role this person applied for");
   if (file.size > 8 * 1024 * 1024) fail(413, `${file.name} is over 8 MB`);
   return Response.json(await ingestCv(file, role));
+});
+
+// DELETE /api/hiring/candidates   removes every candidate (the rubric is kept). Used by "Clear all".
+export const DELETE = handle(async () => {
+  const { error, count } = await db()
+    .from("candidates")
+    .delete({ count: "exact" })
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  if (error) throw error;
+  return Response.json({ deleted: count ?? 0 });
 });
